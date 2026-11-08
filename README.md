@@ -6,6 +6,9 @@
 
 An intelligent Telegram bot that acts as a virtual Quran companion. Users can select a specific Surah and range of Ayahs, and the bot will randomly prompt them to complete a verse via voice note. The system uses Google Gemini's audio processing capabilities to evaluate the recitation against a Google Sheets database and provides immediate, detailed feedback.
 
+## 🔗 Live Demo
+> **Test the bot yourself on Telegram:** [@Rafek_AlQuran_bot](https://t.me/Rafek_AlQuran_bot)
+
 ## 🧠 System Architecture
 ![Workflow Diagram](n8n-workflow.png)
 
