@@ -1,0 +1,450 @@
+{
+  "name": "Rafek AlQuran Full",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        304
+      ],
+      "id": "c0a297a6-1b2b-4835-bec2-f5e024d63836",
+      "name": "Telegram Trigger",
+      "webhookId": "ec789925-6a69-4e8b-893f-0f00c1b9b2cc",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "o9sHErs8bpWX2nhe",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Router: يفهم رسالة اليوزر (سورة + نطاق) ويدير حالة الجلسة =====\nconst SURAHS = [[1, \"الفاتحة\", 7], [2, \"البقرة\", 286], [3, \"آل عمران\", 200], [4, \"النساء\", 176], [5, \"المائدة\", 120], [6, \"الأنعام\", 165], [7, \"الأعراف\", 206], [8, \"الأنفال\", 75], [9, \"التوبة\", 129], [10, \"يونس\", 109], [11, \"هود\", 123], [12, \"يوسف\", 111], [13, \"الرعد\", 43], [14, \"إبراهيم\", 52], [15, \"الحجر\", 99], [16, \"النحل\", 128], [17, \"الإسراء\", 111], [18, \"الكهف\", 110], [19, \"مريم\", 98], [20, \"طه\", 135], [21, \"الأنبياء\", 112], [22, \"الحج\", 78], [23, \"المؤمنون\", 118], [24, \"النور\", 64], [25, \"الفرقان\", 77], [26, \"الشعراء\", 227], [27, \"النمل\", 93], [28, \"القصص\", 88], [29, \"العنكبوت\", 69], [30, \"الروم\", 60], [31, \"لقمان\", 34], [32, \"السجدة\", 30], [33, \"الأحزاب\", 73], [34, \"سبأ\", 54], [35, \"فاطر\", 45], [36, \"يس\", 83], [37, \"الصافات\", 182], [38, \"ص\", 88], [39, \"الزمر\", 75], [40, \"غافر\", 85], [41, \"فصلت\", 54], [42, \"الشورى\", 53], [43, \"الزخرف\", 89], [44, \"الدخان\", 59], [45, \"الجاثية\", 37], [46, \"الأحقاف\", 35], [47, \"محمد\", 38], [48, \"الفتح\", 29], [49, \"الحجرات\", 18], [50, \"ق\", 45], [51, \"الذاريات\", 60], [52, \"الطور\", 49], [53, \"النجم\", 62], [54, \"القمر\", 55], [55, \"الرحمن\", 78], [56, \"الواقعة\", 96], [57, \"الحديد\", 29], [58, \"المجادلة\", 22], [59, \"الحشر\", 24], [60, \"الممتحنة\", 13], [61, \"الصف\", 14], [62, \"الجمعة\", 11], [63, \"المنافقون\", 11], [64, \"التغابن\", 18], [65, \"الطلاق\", 12], [66, \"التحريم\", 12], [67, \"الملك\", 30], [68, \"القلم\", 52], [69, \"الحاقة\", 52], [70, \"المعارج\", 44], [71, \"نوح\", 28], [72, \"الجن\", 28], [73, \"المزمل\", 20], [74, \"المدثر\", 56], [75, \"القيامة\", 40], [76, \"الإنسان\", 31], [77, \"المرسلات\", 50], [78, \"النبأ\", 40], [79, \"النازعات\", 46], [80, \"عبس\", 42], [81, \"التكوير\", 29], [82, \"الانفطار\", 19], [83, \"المطففين\", 36], [84, \"الانشقاق\", 25], [85, \"البروج\", 22], [86, \"الطارق\", 17], [87, \"الأعلى\", 19], [88, \"الغاشية\", 26], [89, \"الفجر\", 30], [90, \"البلد\", 20], [91, \"الشمس\", 15], [92, \"الليل\", 21], [93, \"الضحى\", 11], [94, \"الشرح\", 8], [95, \"التين\", 8], [96, \"العلق\", 19], [97, \"القدر\", 5], [98, \"البينة\", 8], [99, \"الزلزلة\", 8], [100, \"العاديات\", 11], [101, \"القارعة\", 11], [102, \"التكاثر\", 8], [103, \"العصر\", 3], [104, \"الهمزة\", 9], [105, \"الفيل\", 5], [106, \"قريش\", 4], [107, \"الماعون\", 7], [108, \"الكوثر\", 3], [109, \"الكافرون\", 6], [110, \"النصر\", 3], [111, \"المسد\", 5], [112, \"الإخلاص\", 4], [113, \"الفلق\", 5], [114, \"الناس\", 6]]; // [رقم, اسم, عدد الآيات]\n\nconst msg = $input.first().json.message || {};\nconst chatId = msg.chat && msg.chat.id;\n\nconst sd = $getWorkflowStaticData('global');\nsd.sessions = sd.sessions || {};\nconst s = sd.sessions[chatId] = sd.sessions[chatId] || { stage: 'idle', surah: null, from: null, to: null, ayah: null };\n\nconst toEn = (t) => String(t || '')\n  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))\n  .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));\nconst norm = (t) => String(t || '').replace(/[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED\\u0640]/g, '')\n  .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').trim().toLowerCase();\nconst keyOf = (t) => norm(t).replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/ء/g, '')\n  .replace(/[^\\u0621-\\u064A]/g, '').replace(/^ال/, '');\nconst KEYS = SURAHS.map(x => keyOf(x[1]));\n\nconst out = (o) => [{ json: Object.assign({ chatId }, o) }];\nconst reply = (text) => out({ action: 'reply', text });\n\nconst ask = () => {\n  const info = SURAHS[s.surah - 1];\n  const size = s.to - s.from + 1;\n  let n = s.from + Math.floor(Math.random() * size);\n  if (size > 1) { let g = 0; while (n === s.ayah && g++ < 10) n = s.from + Math.floor(Math.random() * size); }\n  s.ayah = n;\n  s.stage = 'awaiting_voice';\n  return out({ action: 'ask', surah: s.surah, surahName: info[1], total: info[2], ayah: n });\n};\n\nconst HELP = '🕌 <b>رفيق القرآن</b>\\n\\n' +\n  '1️⃣ ابعتلي السورة والنطاق، مثال: <b>البقرة 1 10</b> أو <b>الكهف 1 10</b> أو <b>18 1 10</b> (رقم السورة ثم من ثم إلى)\\n' +\n  '   ولو كتبت اسم السورة بس هسألك على النطاق، أو اكتب <b>كاملة</b> لاختبارك في السورة كلها\\n' +\n  '2️⃣ هختار آية عشوائية من النطاق وأديك أول 3 كلمات منها\\n' +\n  '3️⃣ ابعتلي <b>رسالة صوتية</b> بتكمل فيها الآية والآية اللي بعدها\\n' +\n  '4️⃣ هراجع تلاوتك بالتشكيل وأقولك صح ولا غلط، وبعدها تقرر تكمل ولا لأ\\n\\n' +\n  'الأوامر:\\n/start - البداية\\n/help - المساعدة\\n/stop - إنهاء الجلسة\\n' +\n  'ولو عايز نفس السورة والنطاق القديم اكتب: <b>نفس النطاق</b>';\n\nconst voice = msg.voice || msg.audio;\nconst text = (msg.text || '').trim();\n\n// ---------- رسالة صوتية ----------\nif (voice && voice.file_id) {\n  if (s.stage === 'awaiting_voice' && s.ayah && s.surah) {\n    const info = SURAHS[s.surah - 1];\n    return out({ action: 'evaluate', surah: s.surah, surahName: info[1], total: info[2], ayah: s.ayah, fileId: voice.file_id });\n  }\n  return reply('محتاج الأول تحدد السورة والنطاق 📖\\nابعتلي مثلاً: <b>البقرة 1 10</b> وبعدها هسألك وتسمّع بصوتك.');\n}\n\n// ---------- رسالة غير نصية ----------\nif (!text) return reply('ابعتلي السورة والنطاق (مثال: <b>البقرة 1 10</b>) أو رسالة صوتية بالتسميع 🎙️');\n\nconst t = norm(text);\n\n// ---------- أوامر ----------\nif (t.startsWith('/start') || t.startsWith('/help')) {\n  s.stage = 'idle';\n  return reply(HELP);\n}\nif (t.startsWith('/stop')) {\n  s.stage = 'idle'; s.ayah = null;\n  return reply('تم إنهاء الجلسة 🌙 تقبّل الله منك، ونتقابل بإذن الله في المراجعة الجاية.');\n}\n\n// ---------- نفس النطاق ----------\nif (t.includes('نفس') && s.surah && s.from) return ask();\n\n// ---------- تحليل السورة والنطاق ----------\nconst nums = (toEn(text).match(/\\d+/g) || []).map(n => parseInt(n, 10));\nconst FILL = new Set(['سوره', 'من', 'الي', 'ايه', 'ايات', 'في', 'عايز', 'عاوز', 'عايزه', 'عاوزه', 'اختبار', 'اختبرني', 'كامله', 'كامل', 'كل', 'ال', 'ورقم', 'رقم']);\nconst letters = norm(toEn(text).replace(/\\d+/g, ' ')).split(/\\s+/).filter(w => w && !FILL.has(w));\nconst cand = keyOf(letters.join(''));\nlet idx = cand ? KEYS.indexOf(cand) : -1;\nif (idx < 0 && cand.length >= 3) {\n  const m = KEYS.map((k, i) => (k.startsWith(cand) ? i : -1)).filter(i => i >= 0);\n  if (m.length === 1) idx = m[0];\n}\nconst whole = /(^|\\s)(كامل|كامله|كل)(\\s|$)/.test(t);\n\nlet surah = null;\nlet range = [];\nif (idx >= 0) { surah = idx + 1; range = nums.slice(0, 2); }\nelse if (nums.length >= 3) { surah = nums[0]; range = nums.slice(1, 3); }\nelse if (nums.length >= 1 && s.surah && s.stage !== 'idle') { surah = s.surah; range = nums.slice(0, 2); }\nelse if (nums.length >= 1) {\n  return reply('اكتب اسم السورة كمان 📖 مثال: <b>البقرة 1 10</b>');\n}\nelse if (whole && s.surah && s.stage !== 'idle') { surah = s.surah; }\n\nif (surah !== null) {\n  if (surah < 1 || surah > 114) return reply('⚠️ رقم السورة لازم يكون بين <b>1</b> و <b>114</b>.');\n  const info = SURAHS[surah - 1];\n  const count = info[2];\n  let a, b;\n  if (range.length === 0) {\n    if (whole) { a = 1; b = count; }\n    else {\n      s.surah = surah; s.stage = 'awaiting_range'; s.ayah = null;\n      return reply('تمام ✅ سورة <b>' + info[1] + '</b> (' + count + ' آية).\\nابعتلي النطاق، مثال: <b>1 ' + Math.min(10, count) + '</b>\\nأو اكتب <b>كاملة</b> لاختبارك في السورة كلها.');\n    }\n  } else {\n    a = range[0]; b = range.length >= 2 ? range[1] : range[0];\n    if (a > b) { const x = a; a = b; b = x; }\n  }\n  if (a < 1 || b > count) {\n    return reply('⚠️ سورة <b>' + info[1] + '</b> فيها <b>' + count + '</b> آية بس. ابعت نطاق صحيح.');\n  }\n  s.surah = surah; s.from = a; s.to = b;\n  return ask();\n}\n\n// ---------- الاستمرار أو التوقف ----------\nif (s.stage === 'awaiting_continue') {\n  if (/^(نعم|ايوه|ايوا|اه|يلا|كمل|اكمل|كمان|تمام|اوك|ok|yes|y)/.test(t)) return ask();\n  if (/^(لا|خلاص|كفايه|كفي|توقف|بس|no|stop|n)/.test(t)) {\n    s.stage = 'idle'; s.ayah = null;\n    return reply('تقبّل الله منك 🌙 هنتقابل بإذن الله في تذكير الغد الساعة 9. ولو حبيت تكمل ابعتلي سورة ونطاق جديد في أي وقت.');\n  }\n  return reply('رد بـ <b>نعم</b> لو عايز آية عشوائية تانية، أو <b>لا</b> لو كفاية كده. أو ابعت سورة ونطاق جديد.');\n}\n\nif (s.stage === 'awaiting_voice') {\n  return reply('ابعتلي تسجيلك الصوتي 🎙️ لإكمال الآية، أو ابعت سورة ونطاق جديد لو عايز تغيّر.');\n}\nif (s.stage === 'awaiting_range') {\n  return reply('ابعتلي النطاق، مثال: <b>1 10</b> أو اكتب <b>كاملة</b>.');\n}\n\nreturn reply('ابعتلي السورة والنطاق اللي عايز تتختبر فيه، مثال: <b>البقرة 1 10</b>\\nأو اكتب /help للمساعدة.');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        304
+      ],
+      "id": "e4fa293d-7ee8-4bf3-bb65-534216af2cd9",
+      "name": "Router"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "649db18e-f9ec-4e83-910a-91f655bf2288",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "reply",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        304
+      ],
+      "id": "8d20d3bd-12e8-40f1-9e61-db09f18abd5c",
+      "name": "Is Reply?"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ayBiCRil7GS_IeGZR0TaODLiYtTc7cT__A3ToQsUWxo",
+          "mode": "list",
+          "cachedResultName": "قرآن الكريم كامل",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ayBiCRil7GS_IeGZR0TaODLiYtTc7cT__A3ToQsUWxo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 581025756,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ayBiCRil7GS_IeGZR0TaODLiYtTc7cT__A3ToQsUWxo/edit#gid=581025756"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "رقم السورة",
+              "lookupValue": "={{ $json.surah }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        432
+      ],
+      "id": "ea43f1f3-4dc5-426a-83fa-e53829043427",
+      "name": "Get Sheet Rows",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notesInFlow": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SWDrVuQDwMhIjOcr",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Process: يجهز السؤال أو بيانات التقييم من صفوف السورة المختارة =====\nconst COL_AYAH = 'رقم الآية';\nconst COL_TEXT = 'النص الكامل بالتشكيل';\n\nconst r = $('Router').first().json;\nconst esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst toEn = (t) => String(t == null ? '' : t)\n  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))\n  .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));\nconst fail = (text) => [{ json: { action: 'reply', chatId: r.chatId, text } }];\n\nconst rows = $input.all().map(i => i.json).filter(x => x && Object.keys(x).length);\nif (!rows.length) return fail('⚠️ ماقدرتش ألاقي آيات سورة ' + r.surahName + ' في الشيت. اتأكد إن الشيت فيه عمود \"رقم السورة\" وإن الـ node بيقرا الشيت الصح.');\nif (rows[0][COL_AYAH] === undefined || rows[0][COL_TEXT] === undefined) {\n  return fail('⚠️ أسماء الأعمدة في الشيت مختلفة. الموجود: ' + Object.keys(rows[0]).join(' | ') + '\\nلازم تكون: ' + COL_AYAH + ' | ' + COL_TEXT);\n}\n\n// نشيل علامات الوقف والحزب والسجدة (مش بتتنطق) ونظبط المسافات\nconst clean = (t) => String(t == null ? '' : t)\n  .replace(/[\\u06D6-\\u06DC\\u06DE\\u06E9۝﴿﴾]/g, '').replace(/[0-9٠-٩۰-۹]+/g, '').replace(/\\s+/g, ' ').trim();\nconst getAyah = (n) => {\n  const row = rows.find(x => parseInt(toEn(x[COL_AYAH]), 10) === n);\n  return row ? clean(row[COL_TEXT]) : null;\n};\n\nconst n = r.ayah;\nconst a = getAyah(n);\nif (!a) return fail('⚠️ ماقدرتش ألاقي الآية رقم ' + n + ' من سورة ' + r.surahName + ' في الشيت.');\nconst words = a.split(' ');\nconst nextText = n < r.total ? getAyah(n + 1) : null;\n\n// ---------- سؤال ----------\nif (r.action === 'ask') {\n  let text;\n  if (words.length <= 3) {\n    text = '📖 سورة <b>' + esc(r.surahName) + '</b> - الآية <b>' + n + '</b>:\\n<b>' + esc(a) + '</b>\\n\\n' +\n      (nextText ? 'أرسل بصوتك الآية التي تليها (رقم ' + (n + 1) + ') 🎙️' : 'أعدها بصوتك 🎙️');\n  } else {\n    text = '📖 سورة <b>' + esc(r.surahName) + '</b> - الآية <b>' + n + '</b>\\nأكمل بعد: <b>' + esc(words.slice(0, 3).join(' ')) + '</b> ...\\n' +\n      (nextText ? 'ثم الآية التي تليها 🎙️\\n' : '') + 'أرسل تسجيلك الصوتي الآن';\n  }\n  return [{ json: { action: 'ask', chatId: r.chatId, text } }];\n}\n\n// ---------- تقييم ----------\nlet parts = [];   // [{label, text}]\nlet shownInfo = '';\nif (words.length <= 3) {\n  if (nextText) parts.push({ label: 'الآية ' + (n + 1), text: nextText });\n  shownInfo = 'أُعطي القارئ الآية ' + n + ' كاملة (' + a + ') وطُلب منه تلاوة الآية التي تليها فقط.';\n} else {\n  parts.push({ label: 'تكملة الآية ' + n, text: words.slice(3).join(' ') });\n  if (nextText) parts.push({ label: 'الآية ' + (n + 1), text: nextText });\n  shownInfo = 'أُعطي القارئ أول ثلاث كلمات فقط (' + words.slice(0, 3).join(' ') + ') وطُلب منه إكمال الآية ثم تلاوة الآية التي تليها. عدم نطقه للكلمات الثلاث الأولى ليس خطأً.';\n}\nif (!parts.length) return fail('⚠️ مفيش نص للتقييم لهذه الآية.');\nconst expected = parts.map(p => p.label + ': ' + p.text).join('\\n');\nconst expectedDisplay = parts.map(p => '<b>' + esc(p.label) + ':</b>\\n' + esc(p.text)).join('\\n\\n');\n\nconst prompt = 'أنت مصحح تلاوة قرآنية متقن وصارم. استمع إلى التسجيل الصوتي المرفق وقارن ما نطقه القارئ فعلياً بالنص الصحيح التالي كلمة بكلمة.\\n\\n' +\n  'النص الصحيح (من سورة ' + r.surahName + '):\\n' + expected + '\\n\\n' +\n  'سياق: ' + shownInfo + '\\n\\n' +\n  'القواعد:\\n' +\n  '- قد يكون القارئ أخطأ، فلا تفترض أنه قرأ النص الصحيح ولا تصحح له تلقائياً؛ احكم على ما سمعته فعلاً.\\n' +\n  '- الأخطاء المعتبرة: كلمة ناقصة، كلمة زائدة، كلمة مبدلة بغيرها، تقديم أو تأخير كلمات، وخطأ في حركات الحروف (فتحة/ضمة/كسرة/سكون/تنوين/شدة) خاصة ما يغيّر الإعراب أو المعنى.\\n' +\n  '- لا تعتبر أخطاءً: دقائق التجويد (مقدار المد، الغنة، الإخفاء، الإدغام، القلقلة)، جودة الصوت، التوقف والتنفس، وسكون آخر الكلمة عند الوقف.\\n' +\n  '- إذا كان التسجيل غير واضح أو صامتاً أو لا يحتوي تلاوة، اجعل unclear = true.\\n\\n' +\n  'أرجع JSON فقط، بدون أي نص آخر وبدون علامات ```، بهذا الشكل بالضبط:\\n' +\n  '{\"correct\": true, \"unclear\": false, \"errors\": []}\\n' +\n  'حيث errors قائمة نصوص عربية قصيرة، كل نص يصف خطأ واحداً بدقة، مثال: \"نطقتَ (كلمة) بالفتح والصحيح بالضم\".';\n\nreturn [{ json: { action: 'evaluate', chatId: r.chatId, ayah: n, fileId: r.fileId, prompt, expectedDisplay } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        432
+      ],
+      "id": "3caa7ac2-82f9-453d-b41a-b2fbf3c3d5ed",
+      "name": "Process"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c7dc6cd8-26d2-4dae-ac37-0019d88bb9e8",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "evaluate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        432
+      ],
+      "id": "6ecac403-4e71-4bdf-8078-3bd01c904b3e",
+      "name": "Is Evaluate?"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.fileId }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        544
+      ],
+      "id": "3ba1aec2-3c95-4329-9364-22dc185c9a7e",
+      "name": "Get Voice File",
+      "webhookId": "dbc63fce-6584-42a5-8deb-d05ef3b72d9c",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "o9sHErs8bpWX2nhe",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash"
+        },
+        "text": "={{ $('Process').first().json.prompt }}",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        544
+      ],
+      "id": "cedd4716-a914-47a3-be8c-f600359e82cb",
+      "name": "Analyze Recitation",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Paawj8heIsqWKbaq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Finalize: يقرأ رد Gemini ويبني رسالة النتيجة + يحدّث الحالة =====\nconst p = $('Process').first().json;\nconst esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst sd = $getWorkflowStaticData('global');\nconst s = (sd.sessions || {})[p.chatId];\n\nconst j = $input.first().json || {};\nlet raw = '';\nif (j.content && Array.isArray(j.content.parts)) raw = j.content.parts.map(x => x.text || '').join('');\nelse if (j.candidates && j.candidates[0] && j.candidates[0].content) raw = (j.candidates[0].content.parts || []).map(x => x.text || '').join('');\nelse if (typeof j.text === 'string') raw = j.text;\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nlet v = null;\ntry { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) v = JSON.parse(m[0]); } catch (e) { v = null; }\n\nconst send = (text) => [{ json: { chatId: p.chatId, text } }];\n\nif (!v || v.unclear) {\n  if (s) s.stage = 'awaiting_voice';\n  return send('🎧 ماقدرتش أسمع التلاوة بوضوح. ابعت التسجيل تاني من فضلك (في مكان هادي وبصوت واضح).');\n}\n\nif (s) s.stage = 'awaiting_continue';\nconst errors = Array.isArray(v.errors) ? v.errors.filter(Boolean) : [];\nconst ask = '\\n\\nتحب أختبرك بآية عشوائية تانية من نفس النطاق؟ (<b>نعم</b> / <b>لا</b>)\\nأو ابعت نطاق جديد.';\n\nif (v.correct === true && errors.length === 0) {\n  return send('أحسنت ✅ تلاوة صحيحة ومتقنة، بارك الله فيك 🌟' + ask);\n}\n\nlet text = '❌ <b>فيه ملاحظات على التلاوة:</b>\\n' + errors.map(e => '• ' + esc(e)).join('\\n');\nif (!errors.length) text += '\\n• في اختلاف عن النص الصحيح';\ntext += '\\n\\n📖 <b>الصحيح كاملاً:</b>\\n\\n' + p.expectedDisplay + ask;\nreturn send(text);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        544
+      ],
+      "id": "de53b6e7-894e-418c-9fb9-8ff62d8e7d7b",
+      "name": "Finalize"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2160,
+        304
+      ],
+      "id": "00640f83-5eda-4020-bda6-7a29278537df",
+      "name": "Send Message",
+      "webhookId": "2223e39d-f971-47a8-8306-6cd8818371d6",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "o9sHErs8bpWX2nhe",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8c5b48d6-1f8e-415f-a650-e8c4363e8e00",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "997976714",
+        "text": "حان وقت المراجعة اليومية 🕘\nابعتلي السورة والنطاق اللي عايز تتختبر فيه، مثال: البقرة 1 10 أو الكهف 1 10\nأو اكتب: نفس النطاق",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "6697b95a-841d-4a5b-9976-513329b0254e",
+      "name": "Daily Reminder",
+      "webhookId": "259976eb-94fc-410a-9e4d-a16d7a059b6f",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "o9sHErs8bpWX2nhe",
+          "name": "Telegram account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "Is Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Sheet Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheet Rows": {
+      "main": [
+        [
+          {
+            "node": "Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process": {
+      "main": [
+        [
+          {
+            "node": "Is Evaluate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Evaluate?": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File": {
+      "main": [
+        [
+          {
+            "node": "Analyze Recitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Recitation": {
+      "main": [
+        [
+          {
+            "node": "Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize": {
+      "main": [
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Daily Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Africa/Cairo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "68f85428-8cb3-42b7-95fb-ddf6011a4d16",
+  "meta": {
+    "instanceId": "842382ebd1f9153a867d3f39ba3f49c8a11e550de628dff7f8fdffba8eb7f263"
+  },
+  "nodeGroups": [],
+  "id": "hhWXvxeIDniy9EhW",
+  "tags": []
+}
